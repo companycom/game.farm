@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Mini Farm 2D</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; min-height: 100vh;
+    background: #ffffff; color: #333;
+    font-family: system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+  .screen { display: none; }
+  .screen.active { display: flex; }
+
+  /* ---------- AUTH ---------- */
+  #auth { min-height: 100vh; align-items: center; justify-content: center; padding: 20px; background: #ffffff; }
+  .auth-box {
+    width: 100%; max-width: 340px;
+    background: #263226; border: 2px solid #3f5a3f;
+    border-radius: 12px; padding: 24px;
+    color: #e8f0e0;
+  }
+  .auth-box h1 { margin: 0 0 4px; font-size: 22px; color: #b8e0a0; }
+  .auth-box p.sub { margin: 0 0 18px; font-size: 12px; color: #8aa88a; }
+  .auth-box input {
+    width: 100%; padding: 10px 12px; margin-bottom: 10px;
+    background: #1a241a; border: 1px solid #3f5a3f;
+    border-radius: 6px; color: #e8f0e0; font-size: 14px;
+  }
+  .auth-box input:focus { outline: 2px solid #6fa06f; }
+  .auth-box button {
+    width: 100%; padding: 11px; margin-top: 6px;
+    border: 1px solid #6fa06f; border-radius: 6px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    color: #eaffea;
+  }
+  #btn-login    { background: #4a7a4a; }
+  #btn-login:hover { background: #5a8f5a; }
+  #btn-register { background: #3a5a7a; border-color: #6fa0c0; }
+  #btn-register:hover { background: #4a6f94; }
+  #auth-msg { min-height: 18px; margin-bottom: 8px; font-size: 12px; text-align: center; }
+  .err { color: #ff9a9a; }
+  .ok  { color: #9affb0; }
+
+  /* ---------- GAME ---------- */
+  #game { min-height: 100vh; flex-direction: column; background: #ffffff; }
+
+  .topbar {
+    display: flex; flex-wrap: wrap; gap: 6px 10px;
+    padding: 8px 12px;
+    background: #1f2a1f; border-bottom: 2px solid #3f5a3f;
+    font-size: 12px; align-items: center;
+    color: #e8f0e0;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .topbar .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; background: #263226;
+    border: 1px solid #3f5a3f; border-radius: 20px;
+    font-weight: 600; white-space: nowrap;
+  }
+  .topbar .chip b { color: #ffd97a; font-weight: 800; }
+  .topbar .chip.digs b { color: #ff9a5a; }
+  .topbar .chip.treasure b { color: #ffd700; }
+  .topbar .chip.bomb b { color: #ff6060; }
+  .topbar .spacer { flex: 1; min-width: 8px; }
+  .topbar .user { font-size: 11px; color: #9fc99f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+  .topbar button.logout {
+    background: #5a3a3a; border: 1px solid #a06f6f;
+    color: #ffdede; padding: 3px 9px;
+    border-radius: 6px; font-size: 11px; cursor: pointer;
+  }
+
+  .main {
+    flex: 1; display: flex; gap: 14px; padding: 12px;
+    align-items: flex-start; justify-content: center; flex-wrap: wrap;
+  }
+  .game-col { display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 100%; }
+  canvas {
+    background: #ffffff;
+    border: 3px solid #d8e0d8; border-radius: 8px;
+    display: block;
+    max-width: 100%;
+    height: auto;
+    touch-action: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+
+  /* Kontrol */
+  .controls {
+    display: flex; gap: 20px; align-items: center; justify-content: center;
+    width: 100%; padding: 4px 0;
+    flex-wrap: wrap;
+  }
+  .dpad-wrap { display: block; }
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(3, 52px);
+    gap: 6px; touch-action: none;
+  }
+  .dpad button {
+    background: #4a7a4a; border: 2px solid #6fa06f;
+    color: #eaffea; border-radius: 8px; cursor: pointer;
+    font-size: 20px; font-weight: 700;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none; padding: 0;
+  }
+  .dpad button:active { background: #6fa06f; transform: scale(0.94); }
+  .dpad .up    { grid-area: 1 / 2; }
+  .dpad .left  { grid-area: 2 / 1; }
+  .dpad .down  { grid-area: 3 / 2; }
+  .dpad .right { grid-area: 2 / 3; }
+
+  .action-btns { display: flex; gap: 12px; align-items: center; }
+  .action-btns button {
+    width: 82px; height: 82px; border-radius: 50%;
+    color: #fff; font-size: 13px; font-weight: 800;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+    touch-action: none; letter-spacing: 1px; border: 3px solid;
+  }
+  #btn-aksi  { background: #c46a6a; border-color: #ff9a9a; }
+  #btn-aksi:active  { background: #ff9a9a; transform: scale(0.94); }
+  #btn-ambil { background: #6a8ac4; border-color: #9abbff; }
+  #btn-ambil:active { background: #9abbff; transform: scale(0.94); }
+  #btn-ambil:disabled { background: #aaa; border-color: #ccc; opacity: 0.55; cursor: not-allowed; }
+
+  /* Hint keyboard — default hidden, tampil di desktop */
+  .keyboard-hint {
+    display: none;
+    text-align: center;
+    font-size: 12px;
+    color: #8aa88a;
+    padding: 6px;
+    background: #263226;
+    border-radius: 6px;
+    border: 1px solid #3f5a3f;
+  }
+
+  /* ============================================
+     DEVICE DETECTION — pakai class body
+  ============================================ */
+
+  /* MOBILE: D-Pad wajib tampil, hint keyboard hilang */
+  body.is-mobile .dpad-wrap { display: block !important; }
+  body.is-mobile .keyboard-hint { display: none !important; }
+
+  /* DESKTOP: D-Pad disembunyikan, hint keyboard tampil */
+  body.is-desktop .dpad-wrap { display: none !important; }
+  body.is-desktop .keyboard-hint { display: block !important; }
+  body.is-desktop .controls { gap: 0; }
+
+  .panel {
+    width: 260px; background: #263226;
+    border: 2px solid #3f5a3f; border-radius: 8px;
+    padding: 12px; font-size: 13px;
+    color: #e8f0e0;
+  }
+  h3 { margin: 6px 0; font-size: 11px; color: #9fc99f; text-transform: uppercase; letter-spacing: 1px; }
+  .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .row b { color: #ffd97a; }
+  hr { border: none; border-top: 1px solid #3f5a3f; margin: 10px 0; }
+  .panel button {
+    width: 100%; margin-top: 6px; padding: 8px;
+    background: #4a7a4a; border: 1px solid #6fa06f;
+    color: #eaffea; border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 600;
+  }
+  .panel button:hover { background: #5a8f5a; }
+  .panel button.warn { background: #7a5a3a; border-color: #c0a06f; }
+  .panel button.warn:hover { background: #8f6a4a; }
+  .help { font-size: 11px; color: #8aa88a; line-height: 1.6; margin-top: 8px; }
+  kbd {
+    background: #1a241a; border: 1px solid #3f5a3f;
+    border-radius: 3px; padding: 0 4px; font-size: 10px;
+  }
+  .reward-info {
+    background: #3a2a4a; border: 1px solid #7a5a9a;
+    border-radius: 6px; padding: 8px; margin-top: 8px;
+    font-size: 11px; color: #d8c0e8; line-height: 1.6;
+  }
+  .reward-info b { color: #ffd97a; }
+  .reward-info .danger { color: #ff9090; }
+  .save-ind {
+    position: fixed; top: 10px; right: 10px;
+    background: #4a7a4a; color: #fff;
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; opacity: 0;
+    transition: opacity 0.3s; pointer-events: none; z-index: 100;
+  }
+  .save-ind.show { opacity: 1; }
+
+  /* ============================================
+     RESPONSIVE LAYOUT
+  ============================================ */
+
+  /* HP / tablet: layout kolom */
+  @media (max-width: 900px) {
+    .main { flex-direction: column; align-items: center; padding: 10px; gap: 12px; }
+    .game-col { width: 100%; }
+    .panel { width: 100%; max-width: 100%; }
+    .topbar { font-size: 11px; padding: 6px 10px; }
+    .topbar .chip { padding: 3px 7px; }
+    .topbar .user { max-width: 80px; }
+    canvas { width: 100%; max-width: 100%; }
+  }
+
+  /* HP kecil */
+  @media (max-width: 480px) {
+    .topbar { gap: 4px 6px; font-size: 10px; }
+    .topbar .chip { padding: 2px 6px; font-size: 10px; }
+    .topbar .user { display: none; }
+    .dpad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px); gap: 5px; }
+    .action-btns button { width: 70px; height: 70px; font-size: 12px; }
+    .controls { gap: 14px; }
+    .panel { font-size: 12px; padding: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="auth" class="screen active">
+  <div class="auth-box">
+    <h1>🌱 Mini Farm</h1>
+    <p class="sub">Login atau daftar untuk menyimpan progresmu</p>
+    <div id="auth-msg"></div>
+    <input id="in-user" placeholder="Username" autocomplete="username" maxlength="20">
+    <input id="in-pass" type="password" placeholder="Password" autocomplete="current-password" maxlength="40">
+    <button id="btn-login">Login</button>
+    <button id="btn-register">Daftar Akun Baru</button>
+  </div>
+</div>
+
+<div id="game" class="screen">
+  <div class="topbar">
+    <span class="chip">Hari <b id="ui-day">1</b></span>
+    <span class="chip">💰 <b id="ui-money">$50,000</b></span>
+    <span class="chip">💧 <b id="ui-water">20/20</b></span>
+    <span class="chip digs">⛏️ <b id="ui-digs">0/20</b></span>
+    <span class="chip treasure">🎁 <b id="ui-treasure">0/4</b></span>
+    <span class="chip bomb">💥 <b id="ui-bombs">0/6</b></span>
+    <span class="chip">🔧 <b id="ui-tool">Cangkul</b></span>
+    <span class="chip">🌱 <b id="ui-seed">Turnip</b></span>
+    <span class="spacer"></span>
+    <span class="user" id="ui-user">-</span>
+    <button class="logout" id="btn-logout">Keluar</button>
+  </div>
+
+  <div class="main">
+    <div class="game-col">
+      <canvas id="cv" width="480" height="360"></canvas>
+      <div class="controls">
+        <div class="dpad-wrap">
+          <div class="dpad">
+            <button data-k="w" class="up">▲</button>
+            <button data-k="a" class="left">◀</button>
+            <button data-k="s" class="down">▼</button>
+            <button data-k="d" class="right">▶</button>
+          </div>
+        </div>
+        <div class="action-btns">
+          <button id="btn-aksi">AKSI</button>
+          <button id="btn-ambil">AMBIL</button>
+        </div>
+      </div>
+      <div class="keyboard-hint">
+        🎮 Kontrol laptop: <b>WASD</b> / Panah gerak &nbsp;·&nbsp; <b>Spasi</b> pakai alat &nbsp;·&nbsp; <b>E</b> ambil &nbsp;·&nbsp; <b>1-4</b> alat &nbsp;·&nbsp; <b>Q/R</b> ganti
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Benih</h3>
+      <div id="ui-seeds"></div>
+      <h3>Harga Panen</h3>
+      <div id="ui-prices"></div>
+      <hr>
+      <div id="shop"></div>
+      <hr>
+      <button class="warn" id="btn-refresh">🔄 Refresh Lahan</button>
+      <div class="reward-info">
+        🎁 <b>4 peti $100.000</b> &nbsp;|&nbsp; <span class="danger">💥 <b>6 bom -$70.000</b></span><br>
+        Posisi <b>acak & rahasia</b>. ⛏️ <b>Cangkul = gali</b>.<br>
+        Kena peti → tekan <b>AMBIL</b>. Kena bom → uang berkurang.<br>
+        ⛏️ Batas <b>20× gali</b>. Habis → tekan <b>Refresh</b>.<br>
+        🌾 <b>Panen langsung masuk uang</b>.
+      </div>
+      <div class="help">
+        <kbd>WASD</kbd>/<kbd>Panah</kbd> gerak &nbsp; <kbd>Spasi</kbd> pakai alat &nbsp; <kbd>E</kbd> ambil<br>
+        <kbd>1</kbd> cangkul <kbd>2</kbd> benih <kbd>3</kbd> siram <kbd>4</kbd> panen &nbsp; <kbd>Q</kbd>/<kbd>R</kbd> ganti
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="save-ind" id="save-ind">Tersimpan</div>
+
+<script>
+/* ============================================================
+   DEVICE DETECTION — Android / iOS / HP vs Desktop
+============================================================ */
+(function detectDevice() {
+  const ua = navigator.userAgent || '';
+  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(ua);
+  // Anggap mobile kalau: Android/iOS, atau UA mobile, atau layar sempit + touch
+  const isMobile = isAndroid || isIOS || isMobileUA || (isTouch && window.innerWidth <= 900);
+
+  document.body.classList.add(isMobile ? 'is-mobile' : 'is-desktop');
+
+  // Kalau orientasi berubah / resize dan layar sempit sementara di desktop
+  window.addEventListener('resize', () => {
+    if (document.body.classList.contains('is-mobile')) return;
+    const nowMobile = isTouch && window.innerWidth <= 700;
+    if (nowMobile) {
+      document.body.classList.remove('is-desktop');
+      document.body.classList.add('is-mobile');
+    }
+  }, { passive: true });
+})();
+
+/* ============================================================
+   KONFIGURASI
+============================================================ */
+const TILE = 40;
+const COLS = 12;
+const ROWS = 9;
+const W = COLS * TILE;
+const H = ROWS * TILE;
+const SAVE_VERSION = 7;
+
+const REWARD_AMOUNT = 100000;
+const REWARD_COUNT  = 4;
+const MAX_DIGS      = 20;
+const BOMB_COUNT    = 6;
+const BOMB_PENALTY  = 70000;
+
+const CROPS = {
+  turnip: { name: 'Turnip', growDays: 3, seedCost: 200000, sell: 200000, color: '#e8d8a0', leaf: '#7fc24a' },
+  carrot: { name: 'Carrot', growDays: 4, seedCost: 195000, sell: 195000, color: '#e08a2e', leaf: '#5fae3a' },
+  corn:   { name: 'Corn',   growDays: 6, seedCost: 150000, sell: 150000, color: '#f2d24b', leaf: '#4f9c33' }
+};
+
+const TOOL_NAMES = { hoe: 'Cangkul', seed: 'Benih', water: 'Penyiram', harvest: 'Panen' };
+const TOOLS = ['hoe', 'seed', 'water', 'harvest'];
+
+const START_MONEY = 50000;
+
+/* ============================================================
+   STATE
+============================================================ */
+let currentUser = null;
+let G = null;
+let tiles = [];
+let actionCooldown = 0;
+let goldFlash = 0;
+let redFlash = 0;
+let chestBob = 0;
+let gameTime = 0;
+
+const player = {
+  x: 6 * TILE + TILE / 2,
+  y: 4 * TILE + TILE / 2,
+  speed: 2.2,
+  dir: { x: 0, y: 1 }
+};
+
+const keys = {};
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+
+/* ============================================================
+   UTIL
+============================================================ */
+function fmtMoney(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function hash(x, y) {
+  let h = x * 374761393 + y * 668265263;
+  h = (h ^ (h >> 13)) * 1274126177;
+  h = h ^ (h >> 16);
+  return ((h >>> 0) % 1000) / 1000;
+}
+function msg(s) { G.message = s; G.msgTimer = 130; }
+
+function tileColor(t, x, y) {
+  const baseHue = (hash(x, y) * 360 + gameTime * 20) % 360;
+  const pulse = 0.5 + 0.5 * Math.sin(gameTime * 3 + (x * 7 + y * 11) * 0.3);
+
+  if (t.tilled) {
+    const hue = (baseHue + 30) % 360;
+    if (t.watered) {
+      return `hsl(${hue.toFixed(1)}, 60%, ${(22 + pulse * 8).toFixed(1)}%)`;
+    }
+    return `hsl(${hue.toFixed(1)}, 60%, ${(38 + pulse * 10).toFixed(1)}%)`;
+  }
+  return `hsl(${baseHue.toFixed(1)}, ${(65 + pulse * 30).toFixed(1)}%, ${(50 + pulse * 25).toFixed(1)}%)`;
+}
+
+/* ============================================================
+   AUTH & STORAGE
+============================================================ */
+function simpleHash(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function loadAccounts() {
+  try { return JSON.parse(localStorage.getItem('farm_accounts')) || {}; }
+  catch { return {}; }
+}
+function saveAccounts(a) { localStorage.setItem('farm_accounts', JSON.stringify(a)); }
+
+function defaultState() {
+  return {
+    v: SAVE_VERSION,
+    money: START_MONEY, day: 1, water: 20, maxWater: 20,
+    tool: 'hoe', seed: 'turnip',
+    seeds: { turnip: 5, carrot: 0, corn: 0 },
+    tiles: null,
+    digsUsed: 0, maxDigs: MAX_DIGS,
+    px: 6 * TILE + TILE / 2,
+    py: 4 * TILE + TILE / 2
+  };
+}
+
+function saveGame() {
+  if (!currentUser) return;
+  const acc = loadAccounts();
+  if (!acc[currentUser]) return;
+  acc[currentUser].save = {
+    v: SAVE_VERSION,
+    money: G.money, day: G.day, water: G.water, maxWater: G.maxWater,
+    tool: G.tool, seed: G.seed,
+    seeds: { ...G.seeds },
+    digsUsed: G.digsUsed, maxDigs: G.maxDigs,
+    tiles: tiles.map(t => ({
+      x: t.x, y: t.y, tilled: t.tilled, watered: t.watered,
+      crop: t.crop ? { type: t.crop.type, growth: t.crop.growth, ready: t.crop.ready } : null,
+      hasReward: t.hasReward, revealed: t.revealed, collected: t.collected,
+      hasBomb: t.hasBomb, bombExploded: t.bombExploded
+    })),
+    px: player.x, py: player.y
+  };
+  saveAccounts(acc);
+  showSaveIndicator();
+}
+
+let saveIndTimer = null;
+function showSaveIndicator() {
+  const el = document.getElementById('save-ind');
+  el.classList.add('show');
+  clearTimeout(saveIndTimer);
+  saveIndTimer = setTimeout(() => el.classList.remove('show'), 800);
+}
+
+function applySaveToState(save) {
+  G = {
+    money: save.money, day: save.day, water: save.water,
+    maxWater: save.maxWater ?? 20,
+    tool: save.tool, seed: save.seed,
+    seeds: { ...save.seeds },
+    digsUsed: save.digsUsed ?? 0,
+    maxDigs: save.maxDigs ?? MAX_DIGS,
+    message: '', msgTimer: 0
+  };
+  if (save.tiles && save.tiles.length === COLS * ROWS) {
+    tiles = save.tiles.map(t => ({
+      x: t.x, y: t.y,
+      tilled: !!t.tilled, watered: !!t.watered,
+      crop: t.crop ? { type: t.crop.type, growth: t.crop.growth, ready: !!t.crop.ready } : null,
+      hasReward: !!t.hasReward,
+      revealed: !!t.revealed,
+      collected: !!t.collected,
+      hasBomb: t.hasBomb === undefined ? undefined : !!t.hasBomb,
+      bombExploded: !!t.bombExploded
+    }));
+    const hasAnyBombData = tiles.some(t => t.hasBomb !== undefined);
+    if (!hasAnyBombData) {
+      const pool = tiles.filter(t => !t.hasReward && !t.collected);
+      for (let i = 0; i < BOMB_COUNT && pool.length > 0; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        pool[idx].hasBomb = true;
+        pool.splice(idx, 1);
+      }
+    }
+    tiles.forEach(t => { if (t.hasBomb === undefined) t.hasBomb = false; });
+
+    const totalReward = tiles.filter(t => t.hasReward || t.collected).length;
+    if (totalReward === 0 && G.digsUsed === 0) scatterRewards();
+  } else {
+    initTiles();
+  }
+  player.x = save.px ?? (6 * TILE + TILE / 2);
+  player.y = save.py ?? (4 * TILE + TILE / 2);
+  player.dir = { x: 0, y: 1 };
+}
+
+/* ============================================================
+   AUTH UI
+============================================================ */
+const authEl = document.getElementById('auth');
+const gameEl = document.getElementById('game');
+const authMsg = document.getElementById('auth-msg');
+
+function showAuthMsg(text, ok) {
+  authMsg.textContent = text;
+  authMsg.className = ok ? 'ok' : 'err';
+}
+
+function doRegister() {
+  const u = document.getElementById('in-user').value.trim();
+  const p = document.getElementById('in-pass').value;
+  if (u.length < 3) return showAuthMsg('Username minimal 3 karakter', false);
+  if (p.length < 4) return showAuthMsg('Password minimal 4 karakter', false);
+  const acc = loadAccounts();
+  if (acc[u]) return showAuthMsg('Username sudah dipakai', false);
+  acc[u] = { pass: simpleHash(p), save: null };
+  saveAccounts(acc);
+  document.getElementById('in-user').value = u;
+  document.getElementById('in-pass').value = '';
+  document.getElementById('in-pass').focus();
+  showAuthMsg('✅ Akun dibuat! Ketik password lagi lalu tekan Login.', true);
+}
+
+function doLogin() {
+  const u = document.getElementById('in-user').value.trim();
+  const p = document.getElementById('in-pass').value;
+  if (!u || !p) return showAuthMsg('Isi username & password', false);
+  const acc = loadAccounts();
+  if (!acc[u]) return showAuthMsg('Akun tidak ditemukan', false);
+  if (acc[u].pass !== simpleHash(p)) return showAuthMsg('Password salah', false);
+
+  currentUser = u;
+  const save = acc[u].save ? acc[u].save : defaultState();
+  applySaveToState(save);
+
+  authEl.classList.remove('active');
+  gameEl.classList.add('active');
+  document.getElementById('ui-user').textContent = '👤 ' + u;
+
+  buildShop();
+  refresh();
+  saveGame();
+}
+
+function doLogout() {
+  saveGame();
+  currentUser = null;
+  gameEl.classList.remove('active');
+  authEl.classList.add('active');
+  document.getElementById('in-pass').value = '';
+  showAuthMsg('Berhasil keluar', true);
+}
+
+document.getElementById('btn-login').onclick = doLogin;
+document.getElementById('btn-register').onclick = doRegister;
+document.getElementById('btn-logout').onclick = doLogout;
+document.getElementById('in-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+/* ============================================================
+   INIT TILES
+============================================================ */
+function initTiles() {
+  tiles = [];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      tiles.push({
+        x, y,
+        tilled: false, watered: false, crop: null,
+        hasReward: false, revealed: false, collected: false,
+        hasBomb: false, bombExploded: false
+      });
+    }
+  }
+  scatterRewards();
+}
+
+function scatterRewards() {
+  for (const t of tiles) {
+    t.hasReward = false;
+    t.revealed = false;
+    t.collected = false;
+    t.hasBomb = false;
+    t.bombExploded = false;
+  }
+  const pool = tiles.slice();
+  for (let i = 0; i < REWARD_COUNT && pool.length > 0; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    pool[idx].hasReward = true;
+    pool.splice(idx, 1);
+  }
+  for (let i = 0; i < BOMB_COUNT && pool.length > 0; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    pool[idx].hasBomb = true;
+    pool.splice(idx, 1);
+  }
+}
+
+function tileAt(x, y) {
+  if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return null;
+  return tiles[y * COLS + x];
+}
+
+function playerTile() {
+  const px = Math.floor(player.x / TILE);
+  const py = Math.floor(player.y / TILE);
+  return tileAt(px, py);
+}
+
+/* ============================================================
+   ALAT
+============================================================ */
+function targetTile() {
+  const tx = player.x + player.dir.x * TILE;
+  const ty = player.y + player.dir.y * TILE;
+  return tileAt(Math.floor(tx / TILE), Math.floor(ty / TILE));
+}
+
+function useTool() {
+  const t = targetTile();
+  if (!t) { msg('Tidak ada lahan'); return; }
+
+  if (G.tool === 'hoe') {
+    if (t.crop) { msg('Masih ada tanaman'); return; }
+    if (t.tilled) { msg('Sudah dicangkul'); return; }
+    if (G.digsUsed >= G.maxDigs) {
+      msg('⛏️ Kesempatan gali habis! Refresh lahan dulu');
+      return;
+    }
+    t.tilled = true;
+    G.digsUsed++;
+
+    if (t.hasReward && !t.revealed && !t.collected) {
+      t.revealed = true;
+      goldFlash = 30;
+      msg(`✨ PETI DITEMUKAN! Berdiri di atasnya & tekan AMBIL (${G.digsUsed}/${G.maxDigs})`);
+    } else if (t.hasBomb && !t.bombExploded) {
+      t.bombExploded = true;
+      G.money = Math.max(0, G.money - BOMB_PENALTY);
+      redFlash = 45;
+      msg(`💥 BOM MELEDAK! -${fmtMoney(BOMB_PENALTY)} (${G.digsUsed}/${G.maxDigs})`);
+    } else {
+      msg(`Dicangkul — kosong (${G.digsUsed}/${G.maxDigs})`);
+    }
+
+  } else if (G.tool === 'seed') {
+    if (!t.tilled) { msg('Cangkul dulu'); return; }
+    if (t.crop) { msg('Sudah ada tanaman'); return; }
+    if (G.seeds[G.seed] <= 0) { msg('Benih habis'); return; }
+    G.seeds[G.seed]--;
+    t.crop = { type: G.seed, growth: 0, ready: false };
+    msg('Menanam ' + CROPS[G.seed].name);
+
+  } else if (G.tool === 'water') {
+    if (!t.tilled) { msg('Bukan lahan'); return; }
+    if (t.watered) { msg('Sudah disiram'); return; }
+    if (G.water <= 0) { msg('Air habis'); return; }
+    G.water--; t.watered = true; msg('Disiram');
+
+  } else if (G.tool === 'harvest') {
+    if (!t.crop || !t.crop.ready) { msg('Belum siap panen'); return; }
+    const c = CROPS[t.crop.type];
+    G.money += c.sell;
+    goldFlash = 35;
+    msg(`🌾 Panen ${c.name}! +${fmtMoney(c.sell)}`);
+    t.crop = null; t.tilled = true; t.watered = false;
+  }
+  refresh(); saveGame();
+}
+
+function tryAction() {
+  if (actionCooldown <= 0) { useTool(); actionCooldown = 14; }
+}
+
+function collectHere() {
+  const t = playerTile();
+  if (!t) return;
+  if (!t.revealed || t.collected) {
+    msg('Tidak ada peti di sini');
+    return;
+  }
+  t.collected = true;
+  t.revealed = false;
+  t.hasReward = false;
+  G.money += REWARD_AMOUNT;
+  goldFlash = 45;
+  msg(`🎉 ${fmtMoney(REWARD_AMOUNT)}!`);
+  refresh(); saveGame();
+}
+
+/* ============================================================
+   HARI BARU
+============================================================ */
+function nextDay() {
+  for (const t of tiles) {
+    if (t.crop && t.watered) {
+      t.crop.growth++;
+      if (t.crop.growth >= CROPS[t.crop.type].growDays) t.crop.ready = true;
+    }
+    t.watered = false;
+  }
+  G.day++;
+  G.water = G.maxWater;
+  msg('Hari ' + G.day + ' dimulai');
+  refresh(); saveGame();
+}
+
+/* ============================================================
+   REFRESH LAHAN
+============================================================ */
+function refreshLahan() {
+  if (!confirm('Reset lahan ke hijau?\nSemua tanaman & cangkulan hilang.\nUang, benih, hari tetap aman.\n20 gali di-reset & 4 peti + 6 bom diacak ulang.')) return;
+  for (const t of tiles) {
+    t.tilled = false;
+    t.watered = false;
+    t.crop = null;
+  }
+  G.digsUsed = 0;
+  scatterRewards();
+  msg('🔄 Lahan di-reset! 4 peti & 6 bom baru tersebar acak');
+  refresh(); saveGame();
+}
+
+/* ============================================================
+   EKONOMI
+============================================================ */
+function buySeed(k) {
+  const c = CROPS[k];
+  if (G.money < c.seedCost) { msg('Uang tidak cukup'); return; }
+  G.money -= c.seedCost;
+  G.seeds[k]++;
+  msg(`Beli ${c.name} — uang -${fmtMoney(c.seedCost)}`);
+  refresh(); saveGame();
+}
+
+/* ============================================================
+   HUD
+============================================================ */
+const ui = {
+  day: document.getElementById('ui-day'),
+  money: document.getElementById('ui-money'),
+  water: document.getElementById('ui-water'),
+  digs: document.getElementById('ui-digs'),
+  treasure: document.getElementById('ui-treasure'),
+  bombs: document.getElementById('ui-bombs'),
+  tool: document.getElementById('ui-tool'),
+  seed: document.getElementById('ui-seed'),
+  seeds: document.getElementById('ui-seeds'),
+  prices: document.getElementById('ui-prices'),
+  shop: document.getElementById('shop')
+};
+
+function refresh() {
+  if (!G) return;
+  ui.day.textContent = G.day;
+  ui.money.textContent = fmtMoney(G.money);
+  ui.water.textContent = G.water + '/' + G.maxWater;
+  ui.digs.textContent = G.digsUsed + '/' + G.maxDigs;
+
+  const found = tiles.filter(t => t.collected).length;
+  ui.treasure.textContent = found + '/' + REWARD_COUNT;
+
+  const bombsHit = tiles.filter(t => t.bombExploded).length;
+  ui.bombs.textContent = bombsHit + '/' + BOMB_COUNT;
+
+  ui.tool.textContent = TOOL_NAMES[G.tool];
+  ui.seed.textContent = CROPS[G.seed].name;
+
+  ui.seeds.innerHTML = Object.keys(CROPS).map(k =>
+    `<div class="row"><span>${CROPS[k].name}</span><b>${G.seeds[k]}</b></div>`
+  ).join('');
+
+  ui.prices.innerHTML = Object.keys(CROPS).map(k =>
+    `<div class="row"><span>${CROPS[k].name}</span><b>${fmtMoney(CROPS[k].sell)}</b></div>`
+  ).join('');
+
+  const t = playerTile();
+  const btnAmbil = document.getElementById('btn-ambil');
+  if (t && t.revealed && !t.collected) {
+    btnAmbil.disabled = false;
+    btnAmbil.textContent = 'AMBIL';
+  } else {
+    btnAmbil.disabled = true;
+    btnAmbil.textContent = 'AMBIL';
+  }
+}
+
+function buildShop() {
+  ui.shop.innerHTML = '';
+  for (const k in CROPS) {
+    const c = CROPS[k];
+    const b = document.createElement('button');
+    b.textContent = `Beli ${c.name} — ${fmtMoney(c.seedCost)}`;
+    b.onclick = () => buySeed(k);
+    ui.shop.appendChild(b);
+  }
+  const sleep = document.createElement('button');
+  sleep.textContent = 'Tidur (Hari Berikutnya)';
+  sleep.onclick = nextDay;
+  ui.shop.appendChild(sleep);
+}
+
+document.getElementById('btn-refresh').onclick = refreshLahan;
+
+/* ============================================================
+   INPUT KEYBOARD (laptop)
+============================================================ */
+const BLOCK = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '];
+
+addEventListener('keydown', e => {
+  if (!currentUser) return;
+  const k = e.key.toLowerCase();
+  if (BLOCK.includes(k)) e.preventDefault();
+  if (keys[k]) return;
+  keys[k] = true;
+
+  if (k === '1') { G.tool = 'hoe'; refresh(); }
+  if (k === '2') { G.tool = 'seed'; refresh(); }
+  if (k === '3') { G.tool = 'water'; refresh(); }
+  if (k === '4') { G.tool = 'harvest'; refresh(); }
+  if (k === 'q') { G.tool = TOOLS[(TOOLS.indexOf(G.tool) + 1) % TOOLS.length]; refresh(); }
+  if (k === 'r') {
+    const list = Object.keys(CROPS);
+    G.seed = list[(list.indexOf(G.seed) + 1) % list.length];
+    refresh();
+  }
+  if (k === ' ' || k === 'enter') tryAction();
+  if (k === 'e') collectHere();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+/* ============================================================
+   INPUT D-PAD + TOMBOL (HP / touch)
+============================================================ */
+document.querySelectorAll('.dpad button').forEach(btn => {
+  const k = btn.dataset.k;
+  const on  = e => { e.preventDefault(); keys[k] = true;  };
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  btn.addEventListener('mousedown', on);
+  btn.addEventListener('mouseup', off);
+  btn.addEventListener('mouseleave', off);
+  btn.addEventListener('touchstart', on, { passive: false });
+  btn.addEventListener('touchend', off, { passive: false });
+  btn.addEventListener('touchcancel', off, { passive: false });
+});
+
+const btnAksi = document.getElementById('btn-aksi');
+const actOn  = e => { e.preventDefault(); keys[' '] = true; tryAction(); };
+const actOff = e => { e.preventDefault(); keys[' '] = false; };
+btnAksi.addEventListener('mousedown', actOn);
+btnAksi.addEventListener('mouseup', actOff);
+btnAksi.addEventListener('mouseleave', actOff);
+btnAksi.addEventListener('touchstart', actOn, { passive: false });
+btnAksi.addEventListener('touchend', actOff, { passive: false });
+btnAksi.addEventListener('touchcancel', actOff, { passive: false });
+
+const btnAmbil = document.getElementById('btn-ambil');
+btnAmbil.addEventListener('click', e => {
+  e.preventDefault();
+  if (!btnAmbil.disabled) collectHere();
+});
+btnAmbil.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (!btnAmbil.disabled) collectHere();
+}, { passive: false });
+
+/* ============================================================
+   UPDATE
+============================================================ */
+function update(dt) {
+  if (!currentUser) return;
+
+  let dx = 0, dy = 0;
+  if (keys['w'] || keys['arrowup'])    dy--;
+  if (keys['s'] || keys['arrowdown'])  dy++;
+  if (keys['a'] || keys['arrowleft'])  dx--;
+  if (keys['d'] || keys['arrowright']) dx++;
+
+  const prevTx = Math.floor(player.x / TILE);
+  const prevTy = Math.floor(player.y / TILE);
+
+  if (dx || dy) {
+    const len = Math.hypot(dx, dy);
+    dx /= len; dy /= len;
+    player.x += dx * player.speed * dt;
+    player.y += dy * player.speed * dt;
+    if (Math.abs(dx) > Math.abs(dy)) player.dir = { x: Math.sign(dx), y: 0 };
+    else                              player.dir = { x: 0, y: Math.sign(dy) };
+  }
+
+  const r = 12;
+  player.x = Math.max(r, Math.min(W - r, player.x));
+  player.y = Math.max(r, Math.min(H - r, player.y));
+
+  const newTx = Math.floor(player.x / TILE);
+  const newTy = Math.floor(player.y / TILE);
+  if (newTx !== prevTx || newTy !== prevTy) refresh();
+
+  actionCooldown -= dt;
+  if (keys[' '] && actionCooldown <= 0) { useTool(); actionCooldown = 14; }
+
+  chestBob += 0.06;
+  gameTime += dt / 60;
+
+  if (goldFlash > 0) goldFlash -= dt;
+  if (redFlash > 0)  redFlash -= dt;
+  if (G.msgTimer > 0) G.msgTimer -= dt;
+}
+
+/* ============================================================
+   RENDER
+============================================================ */
+function drawCrop(t, px, py) {
+  const c = CROPS[t.crop.type];
+  const p = Math.min(1, t.crop.growth / c.growDays);
+  const cx = px + TILE / 2;
+  const baseY = py + TILE - 8;
+  const h = 6 + p * 18;
+
+  ctx.strokeStyle = c.leaf; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(cx, baseY); ctx.lineTo(cx, baseY - h); ctx.stroke();
+
+  const ls = 3 + p * 5;
+  ctx.fillStyle = c.leaf;
+  ctx.beginPath(); ctx.ellipse(cx - 6, baseY - h * 0.7, ls, ls * 0.6, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 6, baseY - h * 0.7, ls, ls * 0.6, 0.5, 0, Math.PI * 2); ctx.fill();
+
+  if (t.crop.ready) {
+    ctx.fillStyle = c.color;
+    ctx.beginPath(); ctx.arc(cx, baseY - h - 2, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath(); ctx.arc(cx - 2, baseY - h - 4, 2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.lineWidth = 1;
+}
+
+function drawScorch(t) {
+  const cx = t.x * TILE + TILE / 2;
+  const cy = t.y * TILE + TILE / 2;
+  const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 18);
+  grad.addColorStop(0, 'rgba(30,10,10,0.75)');
+  grad.addColorStop(0.6, 'rgba(60,20,20,0.55)');
+  grad.addColorStop(1, 'rgba(60,20,20,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,120,40,0.5)';
+  ctx.beginPath();
+  ctx.arc(cx + 4, cy - 2, 2.5, 0, Math.PI * 2);
+  ctx.arc(cx - 5, cy + 3, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawChest(t) {
+  const cx = t.x * TILE + TILE / 2;
+  const cy = t.y * TILE + TILE / 2 + Math.sin(chestBob) * 2;
+
+  ctx.save();
+  ctx.globalAlpha = 0.35 + Math.sin(chestBob * 1.6) * 0.15;
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = '#8a5e3a';
+  ctx.fillRect(cx - 10, cy - 2, 20, 11);
+  ctx.fillStyle = '#a0703a';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 2, 10, 5, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = '#ffd700';
+  ctx.fillRect(cx - 10, cy + 1, 20, 2);
+  ctx.fillRect(cx - 2, cy, 4, 4);
+  ctx.fillStyle = '#a0703a';
+  ctx.fillRect(cx - 1, cy + 1, 2, 2);
+}
+
+function drawPlayer() {
+  const { x, y } = player;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(x, y + 10, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a6ea5';
+  ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e0b040';
+  ctx.beginPath(); ctx.arc(x, y - 5, 10, Math.PI, 0); ctx.fill();
+  ctx.fillRect(x - 10, y - 6, 20, 3);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(x + player.dir.x * 6, y + player.dir.y * 6 - 2, 2.5, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawMessage() {
+  if (G.msgTimer <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, G.msgTimer / 30);
+  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  const w = ctx.measureText(G.message).width + 24;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(W / 2 - w / 2, 10, w, 26);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(G.message, W / 2, 28);
+  ctx.restore();
+}
+
+function drawFlash() {
+  if (goldFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.6, goldFlash / 60);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  if (redFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.65, redFlash / 55);
+    ctx.fillStyle = '#ff2020';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+}
+
+function render() {
+  if (!currentUser) return;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const t = tiles[y * COLS + x];
+
+      ctx.fillStyle = tileColor(t, x, y);
+      ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+
+      const sh = 0.5 + 0.5 * Math.sin(gameTime * 4 + (x * 13 + y * 17));
+      if (sh > 0.82) {
+        ctx.save();
+        ctx.globalAlpha = (sh - 0.82) * 3.5;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath();
+        ctx.arc(
+          x * TILE + 8 + hash(x, y) * (TILE - 16),
+          y * TILE + 8 + hash(y, x) * (TILE - 16),
+          2.5, 0, Math.PI * 2
+        );
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.strokeRect(x * TILE + 0.5, y * TILE + 0.5, TILE - 1, TILE - 1);
+
+      if (t.tilled) {
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        for (let i = 0; i < 3; i++) ctx.fillRect(x * TILE + 6, y * TILE + 9 + i * 10, TILE - 12, 3);
+      }
+
+      if (t.bombExploded) drawScorch(t);
+      if (t.crop) drawCrop(t, x * TILE, y * TILE);
+      if (t.revealed && !t.collected) drawChest(t);
+    }
+  }
+
+  const tgt = targetTile();
+  if (tgt) {
+    ctx.strokeStyle = '#000000'; ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(tgt.x * TILE + 2, tgt.y * TILE + 2, TILE - 4, TILE - 4);
+    ctx.setLineDash([]); ctx.lineWidth = 1;
+  }
+
+  drawPlayer();
+  drawFlash();
+  drawMessage();
+}
+
+/* ============================================================
+   GAME LOOP
+============================================================ */
+let lastTs = 0;
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(32, ts - lastTs) / 16.6667;
+  lastTs = ts;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+addEventListener('beforeunload', () => { if (currentUser) saveGame(); });
+document.getElementById('in-user').focus();
+</script>
+</body>
+</html>
